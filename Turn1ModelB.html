@@ -1,1 +1,101 @@
-T1MB
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Federal Reserve Rate Impact Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container { width: 100%; max-width: 1000px; margin: 20px auto; }
+        canvas { background: white; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <canvas id="rateChangesChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="stockVsRateCut"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="maxDrawdownHeatmap"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="unemploymentInflationChart"></canvas>
+    </div>
+
+    <script>
+    // Data would ideally come from a database or API; here we simulate some data
+    const simulateData = {
+        rateChanges: [
+            {date: '2007-09-18', rate: 4.75},
+            {date: '2024-09-18', rate: 3.25, expectedCut: 0.5}, // Hypothetical future cut
+            // More data points...
+        ],
+        stockPerformance: [
+            {cut: 0.25, performance: 2.5},
+            {cut: 0.5, performance: -1.0},
+            // ...
+        ],
+        drawdowns: [
+            {period: '2024', drawdown: -15},
+            // ...
+        ],
+        econIndicators: [
+            {date: '2024-01', unemployment: 4.2, inflation: 2.5},
+            // ...
+        ]
+    };
+
+    // Line Chart for Rate Changes
+    new Chart(document.getElementById('rateChangesChart'), {
+        type: 'line',
+        data: {
+            labels: simulateData.rateChanges.map(d => d.date),
+            datasets: [{
+                label: 'Federal Funds Rate',
+                data: simulateData.rateChanges.map(d => d.rate),
+                borderColor: 'blue',
+                fill: false
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    // Scatter Plot for Stock vs Rate Cut
+    new Chart(document.getElementById('stockVsRateCut'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Stock Performance vs Rate Cut',
+                data: simulateData.stockPerformance,
+                backgroundColor: 'rgba(255, 99, 132, 0.6)'
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    // Heatmap for Max Drawdowns
+    // Note: Heatmap might require a different library like D3.js or a Chart.js extension for proper visualization
+
+    // Line Chart for Unemployment and Inflation
+    new Chart(document.getElementById('unemploymentInflationChart'), {
+        type: 'line',
+        data: {
+            labels: simulateData.econIndicators.map(d => d.date),
+            datasets: [{
+                label: 'Unemployment Rate',
+                data: simulateData.econIndicators.map(d => d.unemployment),
+                borderColor: 'green',
+                fill: false
+            }, {
+                label: 'Inflation Rate',
+                data: simulateData.econIndicators.map(d => d.inflation),
+                borderColor: 'red',
+                fill: false
+            }]
+        },
+        options: { responsive: true }
+    });
+    </script>
+</body>
+</html>
