@@ -4,311 +4,233 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fed Rate Impact Charts</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <style>
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
         }
         .chart-container {
-            background-color: #ffffff;
+            background-color: white;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        h2 {
-            color: #343a40;
             margin-bottom: 20px;
+            padding: 20px;
         }
-        .bi {
-            margin-right: 5px;
+        h1 {
+            text-align: center;
+            color: #333;
         }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="text-center mb-5">Federal Reserve Rate Impact Analysis</h1>
-        
-        <div class="row">
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h2><i class="bi bi-graph-up"></i>Fed Funds Rate Trend</h2>
-                    <canvas id="rateChart"></canvas>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h2><i class="bi bi-currency-exchange"></i>Stock Performance vs Rate Cuts</h2>
-                    <canvas id="stockChart"></canvas>
-                </div>
-            </div>
-        </div>
-        
-        <div class="row">
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h2><i class="bi bi-thermometer-half"></i>Maximum Drawdowns Heatmap</h2>
-                    <canvas id="heatmapChart"></canvas>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <h2><i class="bi bi-bar-chart-line"></i>Economic Indicators</h2>
-                    <canvas id="econChart"></canvas>
-                </div>
-            </div>
-        </div>
+    <h1>Federal Reserve Rate Impact Analysis</h1>
+    <div class="chart-container">
+        <canvas id="rateChart"></canvas>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="chart-container">
+        <canvas id="stockChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="drawdownChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="unemploymentChart"></canvas>
+    </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Rate changes line chart
-            const rateCtx = document.getElementById('rateChart').getContext('2d');
-            new Chart(rateCtx, {
-                type: 'line',
-                data: {
-                    labels: ['2020', '2021', '2022', '2023', '2024'],
-                    datasets: [{
-                        label: 'Fed Funds Rate',
-                        data: [0.25, 0.25, 1.5, 4.5, 3.5],
-                        borderColor: 'rgba(0, 123, 255, 0.8)',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        annotation: {
-                            annotations: {
-                                point1: {
-                                    type: 'point',
-                                    xValue: '2024',
-                                    yValue: 3.5,
-                                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                                    radius: 6
-                                }
-                            }
-                        },
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Rate (%)'
-                            }
-                        }
-                    }
-                }
-            });
+    Chart.defaults.font.family = 'Arial, sans-serif';
+    Chart.defaults.color = '#333';
 
-            // Stock performance scatter plot
-            const stockCtx = document.getElementById('stockChart').getContext('2d');
-            new Chart(stockCtx, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Stock Performance',
-                        data: [
-                            {x: -0.25, y: 5},
-                            {x: -0.5, y: 10},
-                            {x: -0.75, y: 7},
-                            {x: -1, y: 12}
-                        ],
-                        backgroundColor: 'rgba(40, 167, 69, 0.6)',
-                        pointRadius: 8,
-                        pointHoverRadius: 10
-                    }]
+    // Fed Funds Rate Projection
+    new Chart(document.getElementById('rateChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: ['Current', 'September 2024 (Projected)'],
+            datasets: [{
+                label: 'Fed Funds Rate',
+                data: [4.2, 3.7],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Fed Funds Rate Projection',
+                    font: { size: 18 }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Rate Cut: ${context.parsed.x}%, S&P 500 Change: ${context.parsed.y}%`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Rate Cut (%)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'S&P 500 Change (%)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        }
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Rate (%)'
                     }
                 }
-            });
+            }
+        }
+    });
 
-            // Maximum drawdowns heatmap
-            const heatmapCtx = document.getElementById('heatmapChart').getContext('2d');
-            new Chart(heatmapCtx, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Maximum Drawdowns',
-                        data: [
-                            {x: 0, y: 0, v: 10},
-                            {x: 1, y: 0, v: 15},
-                            {x: 2, y: 0, v: 20},
-                            {x: 0, y: 1, v: 12},
-                            {x: 1, y: 1, v: 18},
-                            {x: 2, y: 1, v: 22}
-                        ],
-                        backgroundColor: function(context) {
-                            const value = context.raw.v;
-                            const alpha = (value - 10) / 15;
-                            return `rgba(220, 53, 69, ${alpha})`;
-                        },
-                        pointRadius: 20
-                    }]
+    // S&P 500 Performance After Rate Cuts
+    new Chart(document.getElementById('stockChart').getContext('2d'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'S&P 500 Returns',
+                data: [
+                    {x: 3, y: 5.5},
+                    {x: 12, y: 10.8}
+                ],
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'S&P 500 Performance After Rate Cuts',
+                    font: { size: 18 }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: false,
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Drawdown: ${context.raw.v}%`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: 'linear',
-                            position: 'bottom',
-                            min: -0.5,
-                            max: 2.5,
-                            ticks: {
-                                stepSize: 1
-                            },
-                            title: {
-                                display: true,
-                                text: 'Months After Cut'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            min: -0.5,
-                            max: 1.5,
-                            ticks: {
-                                stepSize: 1
-                            },
-                            title: {
-                                display: true,
-                                text: 'Rate Cut Cycle'
-                            }
-                        }
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Months After First Cut'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'S&P 500 Return (%)'
                     }
                 }
-            });
+            }
+        }
+    });
 
-            // Unemployment and inflation trends
-            const econCtx = document.getElementById('econChart').getContext('2d');
-            new Chart(econCtx, {
-                type: 'line',
-                data: {
-                    labels: ['2020', '2021', '2022', '2023', '2024'],
-                    datasets: [{
-                        label: 'Unemployment Rate',
-                        data: [8.1, 5.4, 3.6, 3.7, 4.2],
-                        borderColor: 'rgba(0, 123, 255, 0.8)',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        yAxisID: 'y1',
-                        tension: 0.4,
-                        fill: true
-                    }, {
-                        label: 'Inflation Rate',
-                        data: [1.4, 7.0, 6.5, 3.4, 2.2],
-                        borderColor: 'rgba(220, 53, 69, 0.8)',
-                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                        yAxisID: 'y2',
-                        tension: 0.4,
-                        fill: true
-                    }]
+    // Maximum Drawdowns Comparison as a Heatmap
+    new Chart(document.getElementById('drawdownChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Drawdown Comparison'],
+            datasets: [
+                {
+                    label: '12-Month Max Drawdown After Cut',
+                    data: [19.5],
+                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                    barPercentage: 1,
+                    categoryPercentage: 1,
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
+                {
+                    label: 'Average Max Drawdown Since 1974',
+                    data: [14.4],
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    barPercentage: 1,
+                    categoryPercentage: 1,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Maximum Drawdowns Comparison',
+                    font: { size: 18 }
+                },
+                legend: {
+                    position: 'right',
+                    labels: {
+                        boxWidth: 20,
+                        font: {
+                            size: 10
                         }
-                    },
-                    scales: {
-                        y1: {
-                            type: 'linear',
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Unemployment Rate (%)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        },
-                        y2: {
-                            type: 'linear',
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Inflation Rate (%)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            },
-                            grid: {
-                                drawOnChartArea: false,
-                            }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.x + '%';
                         }
                     }
                 }
-            });
-        });
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Drawdown (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                y: {
+                    stacked: true,
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Recent Unemployment Rate Trend
+    new Chart(document.getElementById('unemploymentChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: ['July', 'August'],
+            datasets: [{
+                label: 'Unemployment Rate',
+                data: [4.3, 4.2],
+                borderColor: 'rgb(255, 159, 64)',
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                tension: 0.1,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Recent Unemployment Rate Trend',
+                    font: { size: 18 }
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Unemployment Rate (%)'
+                    }
+                }
+            }
+        }
+    });
     </script>
 </body>
 </html>
