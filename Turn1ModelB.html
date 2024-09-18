@@ -2,100 +2,84 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Federal Reserve Rate Impact Analysis</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Ant Smasher</title>
     <style>
-        .chart-container { width: 100%; max-width: 1000px; margin: 20px auto; }
-        canvas { background: white; border: 1px solid #ddd; }
+        canvas { background: #87CEEB; display: block; margin: 0 auto; }
     </style>
 </head>
 <body>
-    <div class="chart-container">
-        <canvas id="rateChangesChart"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="stockVsRateCut"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="maxDrawdownHeatmap"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="unemploymentInflationChart"></canvas>
-    </div>
-
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
     <script>
-    // Data would ideally come from a database or API; here we simulate some data
-    const simulateData = {
-        rateChanges: [
-            {date: '2007-09-18', rate: 4.75},
-            {date: '2024-09-18', rate: 3.25, expectedCut: 0.5}, // Hypothetical future cut
-            // More data points...
-        ],
-        stockPerformance: [
-            {cut: 0.25, performance: 2.5},
-            {cut: 0.5, performance: -1.0},
-            // ...
-        ],
-        drawdowns: [
-            {period: '2024', drawdown: -15},
-            // ...
-        ],
-        econIndicators: [
-            {date: '2024-01', unemployment: 4.2, inflation: 2.5},
-            // ...
-        ]
-    };
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Game objects and variables
+    let ants = [], bees = [], powerUps = [], score = 0, level = 1, timeLeft = 60, gameActive = false;
 
-    // Line Chart for Rate Changes
-    new Chart(document.getElementById('rateChangesChart'), {
-        type: 'line',
-        data: {
-            labels: simulateData.rateChanges.map(d => d.date),
-            datasets: [{
-                label: 'Federal Funds Rate',
-                data: simulateData.rateChanges.map(d => d.rate),
-                borderColor: 'blue',
-                fill: false
-            }]
-        },
-        options: { responsive: true }
+    // Images
+    const antImage = new Image(); antImage.src = 'ant.png';
+    const beeImage = new Image(); beeImage.src = 'bee.png';
+
+    // Game loop
+    function gameLoop() {
+        if (!gameActive) return;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Update and draw ants, bees, power-ups
+        [ants, bees, powerUps].forEach(group => {
+            for(let i = group.length - 1; i >= 0; i--) {
+                group[i].update();
+                group[i].draw(ctx);
+                if (group[i].y > canvas.height) group.splice(i, 1);
+            }
+        });
+
+        // Score and time
+        ctx.fillText(`Score: ${score} | Time: ${timeLeft}`, 10, 20);
+        
+        // Level up check
+        if (timeLeft <= 0) {
+            levelUp();
+            timeLeft = 60;
+        }
+
+        timeLeft -= 1/60; // Decrease time
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Object constructors for ants, bees, etc.
+    function Ant(x, y, speed, pattern) {
+        this.x = x; this.y = y; this.speed = speed; this.pattern = pattern;
+        this.update = function() {
+            this.y += this.speed;
+            // Here implement pattern movement (sinusoidal, zigzag, etc.)
+        };
+        this.draw = function(ctx) { ctx.drawImage(antImage, this.x, this.y); };
+    }
+
+    function Bee(x, y) { /* Similar to Ant */ }
+    
+    // Event listeners for clicks/taps
+    canvas.addEventListener('click', function(event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left, y = event.clientY - rect.top;
+        // Check if an ant or bee was clicked
     });
 
-    // Scatter Plot for Stock vs Rate Cut
-    new Chart(document.getElementById('stockVsRateCut'), {
-        type: 'scatter',
-        data: {
-            datasets: [{
-                label: 'Stock Performance vs Rate Cut',
-                data: simulateData.stockPerformance,
-                backgroundColor: 'rgba(255, 99, 132, 0.6)'
-            }]
-        },
-        options: { responsive: true }
-    });
+    function startGame() {
+        gameActive = true;
+        gameLoop();
+    }
 
-    // Heatmap for Max Drawdowns
-    // Note: Heatmap might require a different library like D3.js or a Chart.js extension for proper visualization
+    function levelUp() {
+        level++;
+        // Increase difficulty here
+    }
 
-    // Line Chart for Unemployment and Inflation
-    new Chart(document.getElementById('unemploymentInflationChart'), {
-        type: 'line',
-        data: {
-            labels: simulateData.econIndicators.map(d => d.date),
-            datasets: [{
-                label: 'Unemployment Rate',
-                data: simulateData.econIndicators.map(d => d.unemployment),
-                borderColor: 'green',
-                fill: false
-            }, {
-                label: 'Inflation Rate',
-                data: simulateData.econIndicators.map(d => d.inflation),
-                borderColor: 'red',
-                fill: false
-            }]
-        },
-        options: { responsive: true }
-    });
+    // Start game when ready
+    window.onload = startGame;
     </script>
 </body>
 </html>

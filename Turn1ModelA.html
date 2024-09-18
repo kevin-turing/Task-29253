@@ -2,152 +2,141 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Fed Rate Cuts Impact Analysis</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ant Smasher Game</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <style>
-    canvas {
-        max-width: 800px;
-        margin: auto;
-    }
+    body { font-family: 'Arial', sans-serif; background: #f0f0f0; margin: 0; overflow: hidden; }
+    #gameCanvas { background: url('level1.png'); background-size: cover; width: 100vw; height: 100vh; position: relative; }
+    .bug { position: absolute; cursor: pointer; }
+    .ant { width: 50px; height: 50px; background: url('ant.png') no-repeat; background-size: contain; }
+    .bee { width: 60px; height: 60px; background: url('bee.png') no-repeat; background-size: contain; }
+    .powerup { width: 40px; height: 40px; background: yellow; border-radius: 50%; }
+    #score, #gameOver, #startButton, #tutorial { position: absolute; z-index: 10; }
+    #score { top: 10px; left: 10px; color: white; }
+    #gameOver { display: none; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2em; }
+    #startButton { top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 10px 20px; font-size: 1.5em; }
+    #tutorial { display: none; background: rgba(0,0,0,0.8); color: white; padding: 20px; width: 80%; left: 10%; top: 10%; }
 </style>
 </head>
 <body>
-
-<div style="width:80%; margin:20px auto;">
-    <canvas id="rateChangeChart"></canvas>
+<div id="gameCanvas">
+    <div id="score">Score: 0</div>
+    <button id="startButton" onclick="startGame()">Start Game</button>
+    <div id="gameOver">Game Over! <br> Score: <span id="finalScore"></span></div>
+    <div id="tutorial">
+        <h2>How to Play:</h2>
+        <p>Click on ants to smash them. Avoid bees! Use power-ups wisely.</p>
+        <button onclick="document.getElementById('tutorial').style.display='none'">Got it!</button>
+    </div>
 </div>
-
-<div style="width:80%; margin:20px auto;">
-    <canvas id="stockPerformanceScatter"></canvas>
-</div>
-
-<div style="width:80%; margin:20px auto;">
-    <canvas id="drawdownHeatmap"></canvas>
-</div>
-
-<div style="width:80%; margin:20px auto;">
-    <canvas id="economicIndicators"></canvas>
-</div>
-
 <script>
-// Assuming we have prepared datasets for each chart
-const rateChangeData = {
-    labels: ['2020', '2021', '2022', '2023', '2024'],
-    datasets: [{
-        label: 'Fed Funds Rate',
-        data: [2.5, 2.0, 1.5, 1.0, 0.75], // Example data
-        borderColor: 'rgb(75, 192, 192)',
-        tension: 0.1
-    }]
-};
+document.addEventListener("DOMContentLoaded", function() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d'); // Note: We're not using canvas drawing here, but could for more complex graphics
+    let score = 0;
+    let gameInterval;
+    let bugs = [];
+    let powerUps = [];
+    let level = 1;
+    const baseSpeed = 2;
+    const speedIncrement = 0.5;
+    const maxBugs = 10;
 
-const stockPerformanceData = {
-    datasets: [{
-        label: 'S&P 500 vs Rate Change',
-        data: [{x: -0.25, y: 5}, {x: -0.5, y: -2}, {x: 0, y: 10}], // Example data
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        borderColor: 'rgb(255, 99, 132)',
-        pointRadius: 5
-    }]
-};
-
-const drawdownHeatmapData = {
-    labels: ['2020 Cut', '2022 Cut', '2024 Cut'],
-    datasets: [{
-        label: 'Max Drawdown',
-        data: [10, 20, 19], // Example data, should be percentages
-        backgroundColor: function(context) {
-            const value = context.dataset.data[context.dataIndex];
-            return value < 15 ? 'green' : value < 25 ? 'orange' : 'red';
-        }
-    }]
-};
-
-const economicIndicatorsData = {
-    labels: rateChangeData.labels,
-    datasets: [{
-        label: 'Unemployment Rate',
-        data: [5, 4.5, 4, 4.3, 4.2], // Example data
-        borderColor: 'rgb(54, 162, 235)',
-        yAxisID: 'y1'
-    }, {
-        label: 'Inflation Rate',
-        data: [2, 3, 2.5, 2, 2.2], // Example data
-        borderColor: 'rgb(255, 99, 132)',
-        yAxisID: 'y2'
-    }]
-};
-
-// Chart configurations
-new Chart(document.getElementById('rateChangeChart').getContext('2d'), {
-    type: 'line',
-    data: rateChangeData,
-    options: { 
-        plugins: {
-            title: {
-                display: true,
-                text: 'Federal Funds Rate Changes'
+    function Bug(type) {
+        this.x = Math.random() * (canvas.width - 50);
+        this.y = -60;
+        this.type = type;
+        this.speed = baseSpeed + (Math.random() * level * speedIncrement);
+        this.element = document.createElement('div');
+        this.element.className = type === 'ant' ? 'bug ant' : 'bug bee';
+        this.element.onclick = () => {
+            if(type === 'ant') {
+                score += 10;
+                this.remove();
+            } else if(type === 'bee') {
+                gameOver();
             }
+        };
+        canvas.appendChild(this.element);
+    }
+
+    Bug.prototype.move = function() {
+        this.y += this.speed;
+        this.element.style.top = this.y + 'px';
+        if(this.y > canvas.height) {
+            this.remove();
+            if(this.type === 'ant') score -= 5; // penalty for missing an ant
+        }
+    };
+
+    Bug.prototype.remove = function() {
+        this.element.remove();
+        bugs.splice(bugs.indexOf(this), 1);
+    };
+
+    function createBug() {
+        if(bugs.length < maxBugs) {
+            bugs.push(new Bug(Math.random() > 0.1 ? 'ant' : 'bee')); // 10% chance for a bee
         }
     }
-});
 
-new Chart(document.getElementById('stockPerformanceScatter').getContext('2d'), {
-    type: 'scatter',
-    data: stockPerformanceData,
-    options: { 
-        plugins: {
-            title: {
-                display: true,
-                text: 'Stock Performance vs Rate Cuts'
-            }
-        }
+    function startGame() {
+        score = 0;
+        level = 1;
+        document.getElementById('startButton').style.display = 'none';
+        document.getElementById('tutorial').style.display = 'none';
+        gameInterval = setInterval(() => {
+            createBug();
+            bugs.forEach(bug => bug.move());
+            updateScore();
+            if(Math.random() < 0.01) createPowerUp(); // 1% chance for power-up
+            if(score > level * 100) nextLevel();
+        }, 50);
     }
-});
 
-new Chart(document.getElementById('drawdownHeatmap').getContext('2d'), {
-    type: 'bar',
-    data: drawdownHeatmapData,
-    options: { 
-        scales: {
-            x: { stacked: true },
-            y: { display: false }
-        },
-        plugins: {
-            legend: { display: false },
-            title: {
-                display: true,
-                text: 'Maximum Drawdowns Post Rate Cuts'
-            }
-        }
+    function createPowerUp() {
+        let powerUp = {x: Math.random() * canvas.width, y: 0, type: 'powerup'};
+        powerUp.element = document.createElement('div');
+        powerUp.element.className = 'bug powerup';
+        powerUp.element.onclick = () => {
+            // Implement power-up logic (e.g., slow down bugs or clear screen)
+            slowDownBugs();
+            powerUp.element.remove();
+        };
+        canvas.appendChild(powerUp.element);
+        powerUps.push(powerUp);
     }
-});
 
-new Chart(document.getElementById('economicIndicators').getContext('2d'), {
-    type: 'line',
-    data: economicIndicatorsData,
-    options: {
-        scales: {
-            y1: {
-                type: 'linear',
-                position: 'left',
-                title: { display: true, text: 'Unemployment Rate (%)' }
-            },
-            y2: {
-                type: 'linear',
-                position: 'right',
-                title: { display: true, text: 'Inflation Rate (%)' }
-            }
-        },
-        plugins: {
-            title: {
-                display: true,
-                text: 'Unemployment and Inflation Trends'
-            }
-        }
+    function slowDownBugs() {
+        bugs.forEach(bug => bug.speed /= 2);
+        setTimeout(() => bugs.forEach(bug => bug.speed *= 2), 5000); // Speed back up after 5 seconds
+    }
+
+    function updateScore() {
+        document.getElementById('score').innerText = `Score: ${score}`;
+    }
+
+    function gameOver() {
+        clearInterval(gameInterval);
+        document.getElementById('gameOver').style.display = 'block';
+        document.getElementById('finalScore').innerText = score;
+        bugs.forEach(bug => bug.remove());
+        bugs = [];
+    }
+
+    function nextLevel() {
+        level++;
+        canvas.style.backgroundImage = `url('level${level}.png')`;
+        // Increase difficulty here, e.g., increase maxBugs or bug speed
+    }
+
+    // Show tutorial on first load
+    if(!localStorage.getItem('playedBefore')) {
+        document.getElementById('tutorial').style.display = 'block';
+        localStorage.setItem('playedBefore', 'true');
     }
 });
 </script>
-
 </body>
 </html>

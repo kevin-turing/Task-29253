@@ -3,234 +3,347 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fed Rate Impact Charts</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <title>Ant Smasher Deluxe</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-        }
-        .chart-container {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            padding: 20px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; background-color: #f0f0f0; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 10px; left: 10px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        #scoreboard { background: rgba(0,0,0,0.7); padding: 10px; border-radius: 10px; font-size: 18px; }
+        #tutorial, #gameOver { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; text-align: center; }
+        button { background: #4CAF50; border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 5px; transition: background-color 0.3s; }
+        button:hover { background-color: #45a049; }
     </style>
 </head>
 <body>
-    <h1>Federal Reserve Rate Impact Analysis</h1>
-    <div class="chart-container">
-        <canvas id="rateChart"></canvas>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="scoreboard">
+            <div id="score">Score: 0</div>
+            <div id="highScore">High Score: 0</div>
+            <div id="level">Level: 1</div>
+            <div id="time">Time: 60</div>
+            <div id="combo">Combo: x1</div>
+        </div>
     </div>
-    <div class="chart-container">
-        <canvas id="stockChart"></canvas>
+    <div id="tutorial">
+        <h2>How to Play Ant Smasher Deluxe</h2>
+        <p>1. Tap or click on ants to smash them and earn points.</p>
+        <p>2. Avoid the bees! Smashing a bee ends the game.</p>
+        <p>3. Collect power-ups:</p>
+        <p>   - Blue: Slows down all bugs</p>
+        <p>   - Red: Clears all ants from the screen</p>
+        <p>4. Build combos for higher scores!</p>
+        <p>5. Progress through levels for tougher challenges!</p>
+        <button onclick="startGame()">Start Game</button>
     </div>
-    <div class="chart-container">
-        <canvas id="drawdownChart"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="unemploymentChart"></canvas>
+    <div id="gameOver">
+        <h2>Game Over!</h2>
+        <p id="finalScore"></p>
+        <p id="newHighScore" style="color: gold; display: none;">New High Score!</p>
+        <button onclick="showTutorial()">Play Again</button>
     </div>
     <script>
-    Chart.defaults.font.family = 'Arial, sans-serif';
-    Chart.defaults.color = '#333';
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-    // Fed Funds Rate Projection
-    new Chart(document.getElementById('rateChart').getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: ['Current', 'September 2024 (Projected)'],
-            datasets: [{
-                label: 'Fed Funds Rate',
-                data: [4.2, 3.7],
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1,
-                fill: false
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Fed Funds Rate Projection',
-                    font: { size: 18 }
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    title: {
-                        display: true,
-                        text: 'Rate (%)'
-                    }
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let time = 60;
+        let level = 1;
+        let combo = 1;
+        let lastSmashTime = 0;
+        let gameRunning = false;
+        let bugs = [];
+        let powerUps = [];
+        let particles = [];
+
+        const bugTypes = {
+            ant: { minSpeed: 1, maxSpeed: 4, size: 40, points: 10, color: 'brown', spawnChance: 0.97 },
+            bee: { minSpeed: 2, maxSpeed: 5, size: 50, points: 0, color: 'yellow', spawnChance: 0.03 }
+        };
+
+        const powerUpTypes = {
+            slowTime: { color: 'blue', effect: () => { bugs.forEach(bug => bug.speed *= 0.5); }, duration: 5000 },
+            clearScreen: { color: 'red', effect: () => { bugs = bugs.filter(bug => bug.type === 'bee'); updateScore(50); } }
+        };
+
+        const backgrounds = [
+            { color: '#90EE90', name: 'Grassy Field' },
+            { color: '#F4A460', name: 'Sandy Beach' },
+            { color: '#B0C4DE', name: 'Cloudy Sky' },
+            { color: '#8B4513', name: 'Forest Floor' },
+            { color: '#708090', name: 'City Sidewalk' }
+        ];
+
+        function Bug(type) {
+            this.type = type;
+            this.x = Math.random() * canvas.width;
+            this.y = 0;
+            this.speed = Math.random() * (bugTypes[type].maxSpeed - bugTypes[type].minSpeed) + bugTypes[type].minSpeed;
+            this.speed *= (1 + level * 0.1);
+            this.size = bugTypes[type].size;
+            this.points = bugTypes[type].points;
+            this.pattern = Math.random() < 0.33 ? 'linear' : (Math.random() < 0.5 ? 'zigzag' : 'spiral');
+            this.angle = 0;
+        }
+
+        Bug.prototype.update = function() {
+            switch(this.pattern) {
+                case 'linear':
+                    this.y += this.speed;
+                    break;
+                case 'zigzag':
+                    this.y += this.speed;
+                    this.x += Math.sin(this.y * 0.1) * 3;
+                    break;
+                case 'spiral':
+                    this.angle += 0.1;
+                    this.x += Math.cos(this.angle) * 2;
+                    this.y += this.speed;
+                    break;
+            }
+        };
+
+        Bug.prototype.draw = function() {
+            ctx.fillStyle = bugTypes[this.type].color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(this.x - this.size / 6, this.y - this.size / 6, this.size / 10, 0, Math.PI * 2);
+            ctx.arc(this.x + this.size / 6, this.y - this.size / 6, this.size / 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(this.x - this.size / 4, this.y - this.size / 2);
+            ctx.lineTo(this.x - this.size / 2, this.y - this.size * 3 / 4);
+            ctx.moveTo(this.x + this.size / 4, this.y - this.size / 2);
+            ctx.lineTo(this.x + this.size / 2, this.y - this.size * 3 / 4);
+            ctx.stroke();
+        };
+
+        function PowerUp(type) {
+            this.type = type;
+            this.x = Math.random() * canvas.width;
+            this.y = 0;
+            this.speed = 1.5;
+            this.size = 30;
+        }
+
+        PowerUp.prototype.update = function() {
+            this.y += this.speed;
+        };
+
+        PowerUp.prototype.draw = function() {
+            ctx.fillStyle = powerUpTypes[this.type].color;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - this.size / 2);
+            ctx.lineTo(this.x - this.size / 2, this.y + this.size / 2);
+            ctx.lineTo(this.x + this.size / 2, this.y + this.size / 2);
+            ctx.closePath();
+            ctx.fill();
+        };
+
+        function Particle(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.size = Math.random() * 3 + 2;
+            this.speedX = Math.random() * 6 - 3;
+            this.speedY = Math.random() * 6 - 3;
+            this.color = color;
+        }
+
+        Particle.prototype.update = function() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.size = Math.max(0, this.size - 0.1);
+        };
+
+        Particle.prototype.draw = function() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        };
+
+        function spawnBug() {
+            const rand = Math.random();
+            let type = 'ant';
+            for (let bugType in bugTypes) {
+                if (rand < bugTypes[bugType].spawnChance) {
+                    type = bugType;
+                    break;
                 }
             }
+            bugs.push(new Bug(type));
         }
-    });
 
-    // S&P 500 Performance After Rate Cuts
-    new Chart(document.getElementById('stockChart').getContext('2d'), {
-        type: 'scatter',
-        data: {
-            datasets: [{
-                label: 'S&P 500 Returns',
-                data: [
-                    {x: 3, y: 5.5},
-                    {x: 12, y: 10.8}
-                ],
-                backgroundColor: 'rgba(255, 99, 132, 0.6)',
-                pointRadius: 8,
-                pointHoverRadius: 10
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'S&P 500 Performance After Rate Cuts',
-                    font: { size: 18 }
-                },
-                legend: {
-                    position: 'bottom'
+        function spawnPowerUp() {
+            const types = Object.keys(powerUpTypes);
+            const type = types[Math.floor(Math.random() * types.length)];
+            powerUps.push(new PowerUp(type));
+        }
+
+        function drawBackground() {
+            ctx.fillStyle = backgrounds[(level - 1) % backgrounds.length].color;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            
+            bugs.forEach((bug, index) => {
+                bug.update();
+                bug.draw();
+                if (bug.y > canvas.height || bug.x < 0 || bug.x > canvas.width) {
+                    bugs.splice(index, 1);
                 }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Months After First Cut'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'S&P 500 Return (%)'
-                    }
+            });
+
+            powerUps.forEach((powerUp, index) => {
+                powerUp.update();
+                powerUp.draw();
+                if (powerUp.y > canvas.height) {
+                    powerUps.splice(index, 1);
                 }
+            });
+
+            particles.forEach((particle, index) => {
+                particle.update();
+                particle.draw();
+                if (particle.size <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+
+            if (Math.random() < 0.05 + level * 0.01) spawnBug();
+            if (Math.random() < 0.005 + level * 0.001) spawnPowerUp();
+
+            // Randomly spawn bees
+            if (Math.random() < 0.001 + level * 0.0002) {
+                bugs.push(new Bug('bee'));
+            }
+
+            time -= 1/60;
+            if (time <= 0) {
+                level++;
+                time = 60;
+                bugTypes.bee.spawnChance = Math.min(bugTypes.bee.spawnChance + 0.005, 0.1);
+            }
+
+            updateUI();
+
+            if (gameRunning) {
+                requestAnimationFrame(updateGame);
             }
         }
-    });
 
-    // Maximum Drawdowns Comparison as a Heatmap
-    new Chart(document.getElementById('drawdownChart').getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: ['Drawdown Comparison'],
-            datasets: [
-                {
-                    label: '12-Month Max Drawdown After Cut',
-                    data: [19.5],
-                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                    barPercentage: 1,
-                    categoryPercentage: 1,
-                },
-                {
-                    label: 'Average Max Drawdown Since 1974',
-                    data: [14.4],
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                    barPercentage: 1,
-                    categoryPercentage: 1,
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            indexAxis: 'y',
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Maximum Drawdowns Comparison',
-                    font: { size: 18 }
-                },
-                legend: {
-                    position: 'right',
-                    labels: {
-                        boxWidth: 20,
-                        font: {
-                            size: 10
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + context.parsed.x + '%';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    title: {
-                        display: true,
-                        text: 'Drawdown (%)'
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
-                },
-                y: {
-                    stacked: true,
-                    display: false
-                }
+        function updateScore(points) {
+            const now = Date.now();
+            if (now - lastSmashTime < 1000) {
+                combo++;
+            } else {
+                combo = 1;
+            }
+            lastSmashTime = now;
+
+            score += points * combo;
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
             }
         }
-    });
 
-    // Recent Unemployment Rate Trend
-    new Chart(document.getElementById('unemploymentChart').getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: ['July', 'August'],
-            datasets: [{
-                label: 'Unemployment Rate',
-                data: [4.3, 4.2],
-                borderColor: 'rgb(255, 159, 64)',
-                backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                tension: 0.1,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Recent Unemployment Rate Trend',
-                    font: { size: 18 }
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    title: {
-                        display: true,
-                        text: 'Unemployment Rate (%)'
-                    }
-                }
+        function updateUI() {
+            document.getElementById('score').textContent = `Score: ${score}`;
+            document.getElementById('highScore').textContent = `High Score: ${highScore}`;
+            document.getElementById('level').textContent = `Level: ${level}`;
+            document.getElementById('time').textContent = `Time: ${Math.ceil(time)}`;
+            document.getElementById('combo').textContent = `Combo: x${combo}`;
+        }
+
+        function createSplatter(x, y, color) {
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(x, y, color));
             }
         }
-    });
+
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+
+            bugs.forEach((bug, index) => {
+                if (Math.hypot(clickX - bug.x, clickY - bug.y) < bug.size) {
+                    bugs.splice(index, 1);
+                    if (bug.type === 'ant') {
+                        updateScore(bug.points);
+                        createSplatter(bug.x, bug.y, bugTypes[bug.type].color);
+                    } else if (bug.type === 'bee') {
+                        gameOver();
+                    }
+                }
+            });
+
+            powerUps.forEach((powerUp, index) => {
+                if (Math.hypot(clickX - powerUp.x, clickY - powerUp.y) < powerUp.size) {
+                    powerUps.splice(index, 1);
+                    powerUpTypes[powerUp.type].effect();
+                    if (powerUp.type === 'slowTime') {
+                        setTimeout(() => {
+                            bugs.forEach(bug => bug.speed *= 2);
+                        }, powerUpTypes[powerUp.type].duration);
+                    }
+                }
+            });
+        });
+
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            time = 60;
+            level = 1;
+            combo = 1;
+            bugs = [];
+            powerUps = [];
+            particles = [];
+            bugTypes.bee.spawnChance = 0.03;
+            document.getElementById('tutorial').style.display = 'none';
+            updateGame();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                document.getElementById('newHighScore').style.display = 'block';
+            } else {
+                document.getElementById('newHighScore').style.display = 'none';
+            }
+            document.getElementById('finalScore').textContent = `Your score: ${score}`;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function showTutorial() {
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('tutorial').style.display = 'block';
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        showTutorial();
     </script>
 </body>
 </html>
